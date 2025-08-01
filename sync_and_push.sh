@@ -1,34 +1,39 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# default target path
+# ——— CONFIGURATION ———
 DEFAULT_TARGET="../DemoVersionWebsite"
+DEFAULT_TARGET_BRANCH="gh-pages"
+SRC_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 TARGET_REPO="${1:-$DEFAULT_TARGET}"
+TARGET_BRANCH="${2:-$DEFAULT_TARGET_BRANCH}"
 
-# verify target is a git repo
+# ——— SANITY CHECKS ———
 if [ ! -d "$TARGET_REPO/.git" ]; then
   echo "Error: '$TARGET_REPO' is not a git repository."
   exit 1
 fi
 
-# source-repo info
+# ——— SOURCE METADATA ———
 SRC_ROOT=$(pwd)
-SRC_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 COMMIT_HASH=$(git rev-parse HEAD)
 COMMIT_MSG=$(git log -1 --pretty=format:%B "$COMMIT_HASH")
 FILES=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_HASH")
 
-# cd into target and ensure branch
+# ——— SWITCH TO TARGET ———
 cd "$TARGET_REPO"
-if git show-ref --verify --quiet refs/heads/"$SRC_BRANCH"; then
-  git checkout "$SRC_BRANCH"
+
+# Checkout the target branch (must exist)
+if git show-ref --verify --quiet refs/heads/"$TARGET_BRANCH"; then
+  git checkout "$TARGET_BRANCH"
 else
-  git checkout -b "$SRC_BRANCH"
+  echo "Error: branch '$TARGET_BRANCH' not found in target repo."
+  exit 1
 fi
 
 CHANGED=false
 
-# iterate changed files
+# ——— FOR EACH FILE: DIFF + PROMPT ———
 for f in $FILES; do
   SRC_FILE="$SRC_ROOT/$f"
   TGT_FILE="$TARGET_REPO/$f"
@@ -36,32 +41,34 @@ for f in $FILES; do
   if [ -f "$TGT_FILE" ]; then
     echo
     echo "====== $f ======"
-    # show diff
     diff -u "$TGT_FILE" "$SRC_FILE" || true
 
-    # prompt
     read -p "Apply this change to '$f'? [y/N] " yn
-    case "$yn" in
-      [Yy]* )
-        mkdir -p "$(dirname "$f")"
-        cp "$SRC_FILE" "$f"
-        git add "$f"
-        CHANGED=true
-        echo "✔ Applied $f"
-        ;;
-      * )
-        echo "✘ Skipped $f"
-        ;;
-    esac
+    if [[ "$yn" =~ ^[Yy] ]]; then
+      mkdir -p "$(dirname "$f")"
+      cp "$SRC_FILE" "$f"
+      git add "$f"
+      CHANGED=true
+      echo "✔ Applied $f"
+    else
+      echo "✘ Skipped $f"
+    fi
   fi
 done
 
-# commit & push if anything staged
+# ——— COMMIT & PUSH ———
 if [ "$CHANGED" = true ]; then
   git commit -m "$COMMIT_MSG"
-  git push
+
+  # if no upstream, set it; otherwise simple push
+  if ! git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+    git push --set-upstream origin "$TARGET_BRANCH"
+  else
+    git push
+  fi
+
   echo
-  echo "✅ Synced selected file(s) to '$TARGET_REPO' on branch '$SRC_BRANCH'."
+  echo "✅ Synced selected files to '$TARGET_REPO' on branch '$TARGET_BRANCH'."
 else
   echo
   echo "ℹ️  No files were synced."

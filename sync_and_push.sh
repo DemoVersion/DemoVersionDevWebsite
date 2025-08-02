@@ -53,6 +53,18 @@ for f in $FILES; do
     else
       echo "✘ Skipped $f"
     fi
+  else
+    echo "New file detected: $f"
+    read -p "Add this new file to the repo? [y/N] " yn
+    if [[ "$yn" =~ ^[Yy] ]]; then
+      mkdir -p "$(dirname "$f")"
+      cp "$SRC_FILE" "$f"
+      git add "$f"
+      CHANGED=true
+      echo "✔ Added new file $f"
+    else
+      echo "✘ Skipped new file $f"
+    fi
   fi
 done
 

@@ -14,7 +14,7 @@ title: Personal Website
              transition-transform transform hover:scale-105 hover:shadow-lg"
     />
     <p>
-      I'm Hesam Haddad, Machine Learning Engineer with a Master’s in NLP, building end-to-end AI pipelines and driving cloud ML deployments, mentoring peers, blogging.
+      I'm Hesam Haddad, Machine Learning Engineer with a Master’s in NLP, building end-to-end AI pipelines and driving cloud ML deployments, mentoring peers, blogging. <a href="/contact/" class="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300">Let’s chat →</a>
     </p>
   </div>
 </section>
